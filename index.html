@@ -4230,6 +4230,16 @@ void main() {
 </style>
 </head><body><div id="root"></div><script>
 window.addEventListener('load',function(){
+  document.addEventListener('click',function(event){
+    var target=event.target.closest('a,button');
+    if(!target)return;
+    var label=(target.textContent||'').trim();
+    if(label.indexOf('下载实验程序')!==-1||label.indexOf('下载程序')!==-1){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      window.location.assign('./downloads/112.zip');
+    }
+  },true);
   document.querySelectorAll('a,button').forEach(function(el){
     var label=(el.textContent||'').trim();
     if(label.indexOf('下载实验程序')!==-1||label.indexOf('下载程序')!==-1){
@@ -4237,6 +4247,15 @@ window.addEventListener('load',function(){
       else{el.onclick=function(){window.location.href='./downloads/112.zip';};}
     }
   });
+  var downloadPanel=document.querySelector('.download.panel');
+  if(downloadPanel&&!downloadPanel.querySelector('.webgl-launch')){
+    var webglButton=document.createElement('a');
+    webglButton.className='button primary webgl-launch';
+    webglButton.href='./webgl/';
+    webglButton.textContent='▶ 启动网页版虚拟实验';
+    webglButton.style.cssText='margin-left:auto;white-space:nowrap;text-align:center';
+    downloadPanel.insertBefore(webglButton,downloadPanel.querySelector('button'));
+  }
   var launch=document.querySelector('.nav-action');
   if(launch){launch.href='./webgl/';launch.textContent='▶ 开始虚拟实验';}
 });
