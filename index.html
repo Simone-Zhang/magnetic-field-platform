@@ -4258,5 +4258,21 @@ window.addEventListener('load',function(){
   }
   var launch=document.querySelector('.nav-action');
   if(launch){launch.href='./webgl/';launch.textContent='▶ 开始虚拟实验';}
+  var syncWebglLinks=function(){
+    var navLaunch=document.querySelector('.nav-action');
+    if(navLaunch){navLaunch.href='./webgl/';navLaunch.textContent='▶ 开始虚拟实验';}
+    var panel=document.querySelector('.download.panel');
+    if(panel&&!panel.querySelector('.webgl-launch')){
+      var launchButton=document.createElement('a');
+      launchButton.className='button primary webgl-launch';
+      launchButton.href='./webgl/';
+      launchButton.textContent='▶ 启动网页版虚拟实验';
+      launchButton.style.cssText='margin-left:auto;white-space:nowrap;text-align:center';
+      panel.insertBefore(launchButton,panel.querySelector('button'));
+    }
+  };
+  var appRoot=document.getElementById('root');
+  if(appRoot)new MutationObserver(syncWebglLinks).observe(appRoot,{childList:true,subtree:true});
+  setTimeout(syncWebglLinks,300);
 });
 </script></body></html>
