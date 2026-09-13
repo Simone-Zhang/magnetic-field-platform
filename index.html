@@ -4259,8 +4259,10 @@ function ou(e,t,n){let r=Ql(n===t?.5:(e-t)/(n-t)),i=[[0,[25,67,224]],[.22,[0,174
 // Experiment coordinates: X along the coils, Z up, Y toward the viewer.
 // Experiment coordinates: X along the coils, Z up, Y toward the viewer.
 // Experiment coordinates: X along the coils, Z up, Y toward the viewer.
+// Experiment coordinates: X along the coils, Z up, Y toward the viewer.
 function fieldCm(value) { return Number(value.toFixed(2)).toString(); }
-function fieldVolumeShells(scene, sampler, bounds, resources) {
+function fieldPositionCm(value) { return Number(value.toFixed(1)).toString(); }
+function fieldVolumeShells(scene, sampler, bounds, resources, contextOnly=false) {
   // Nested isosurfaces of the imported scalar field. No synthetic lobes or peaks.
   const count = 25, vertices = [], values = [];
   for (let x=0;x<count;x++) for(let y=0;y<count;y++) for(let z=0;z<count;z++) {
@@ -4271,7 +4273,7 @@ function fieldVolumeShells(scene, sampler, bounds, resources) {
   }
   const index=(x,y,z)=>(x*count+y)*count+z;
   const tetrahedra=[[0,5,1,6],[0,1,2,6],[0,2,3,6],[0,3,7,6],[0,7,4,6],[0,4,5,6]];
-  const levels=[0.08,0.18,0.30,0.43,0.56,0.69,0.81,0.91,0.975];
+  const levels=contextOnly?[0.06,0.13,0.23,0.36]:[0.08,0.18,0.30,0.43,0.56,0.69,0.81,0.91,0.975];
   if(sampler.maxB-sampler.minB<1e-12) return;
   levels.forEach((fraction, layer)=>{
     const threshold=sampler.minB+fraction*(sampler.maxB-sampler.minB), triangles=[];
@@ -4295,10 +4297,10 @@ function fieldVolumeShells(scene, sampler, bounds, resources) {
     }
     if(!triangles.length)return;
     const shape=new Hr();shape.setAttribute('position',new Ar(triangles,3));
-    const color=ou(threshold,sampler.minB,sampler.maxB);
+    const color=contextOnly?[35,135,220]:ou(threshold,sampler.minB,sampler.maxB);
     const material=new ei({color:(color[0]<<16)|(color[1]<<8)|color[2],transparent:true,
-      opacity:layer<3?0.10:layer<6?0.18:layer===6?0.48:0.92,side:2,depthWrite:false});
-    const mesh=new fi(shape,material);mesh.renderOrder=2+layer*0.2;
+      opacity:contextOnly?0.045:layer<3?0.10:layer<6?0.18:layer===6?0.48:0.92,side:2,depthWrite:false});
+    const mesh=new fi(shape,material);mesh.renderOrder=contextOnly?-2:2+layer*0.2;
     scene.add(mesh);resources.push(shape,material);
   });
 }
@@ -4437,9 +4439,9 @@ function mu({ compact = false, onPoint, data, selectedPoint, showSlices = true, 
     pu(scene, bounds, resources, geometry);
     if (geometry) {
       label('左圈 0', origin);
-      label('右圈 ' + fieldCm(geometry.spacing) + ' cm', fieldScenePosition({ x: geometry.spacing, y: 0, z: 0 }, bounds));
+      label('右圈 ' + fieldPositionCm(geometry.spacing) + ' cm', fieldScenePosition({ x: geometry.spacing, y: 0, z: 0 }, bounds));
       const midpoint = fieldScenePosition({ x: geometry.spacing / 2, y: 0, z: 0 }, bounds);
-      label('中点 ' + fieldCm(geometry.spacing / 2) + ' cm', midpoint, '#ffe1a6');
+      label('中点 ' + fieldPositionCm(geometry.spacing / 2) + ' cm', midpoint, '#ffe1a6');
     }
     const positions = [], colors = [], strengths = [];
     dense.forEach(point => {
@@ -4456,6 +4458,7 @@ function mu({ compact = false, onPoint, data, selectedPoint, showSlices = true, 
       fragmentShader: centerActive?'varying vec3 vColor;varying float vStrength;void main(){vec2 p=gl_PointCoord-0.5;float d=dot(p,p);if(d>0.25)discard;gl_FragColor=vec4(vColor,exp(-d*20.0)*0.11);}':'void main(){discard;}' });
     const cloud = new Ri(shape, material); cloud.visible = showCloud; scene.add(cloud); resources.push(shape, material);
     if(showCloud&&!centerActive) fieldVolumeShells(scene,sampler,bounds,resources);
+    if(showCloud&&centerActive) fieldVolumeShells(scene,ru(samples),bounds,resources,true);
     if (!compact && showSlices) {
       bounds.axisCenter = geometry ? geometry.spacing / 2 : 0;
       // The existing slice geometry is in experiment XYZ. Swap Y/Z once as for points.
@@ -4535,7 +4538,7 @@ function mu({ compact = false, onPoint, data, selectedPoint, showSlices = true, 
     !compact&&(0,p.jsxs)('div',{className:'field-view-switch',children:[
       (0,p.jsx)('button',{disabled:!centerAvailable||!centerData,className:centerActive?'active':'',onClick:()=>setFieldView('center'),children:'中心测量区域'}),
       (0,p.jsx)('button',{className:!centerActive?'active':'',onClick:()=>setFieldView('full'),children:'完整空间（含导线附近）'}),
-      (0,p.jsx)('small',{children:centerActive?`仅显示 X=${fieldCm(centerData.region.x[0])}～${fieldCm(centerData.region.x[1])} cm，Y/Z 在 ±${fieldCm(geometryInfo.diameter*.15)} cm 内；色标 0～区域最大值`:'全空间色标；红色表示当前数据中的高场强，可能位于导线附近'})
+      (0,p.jsx)('small',{children:centerActive?`重点区域 X=${fieldPositionCm(centerData.region.x[0])}～${fieldPositionCm(centerData.region.x[1])} cm，Y/Z 在 ±${fieldPositionCm(geometryInfo.diameter*.15)} cm 内；色标用于中心区域，淡蓝周边仅作全场轮廓参照`:'全空间色标；红色表示当前数据中的高场强，可能位于导线附近'})
     ]}),
     (0, p.jsx)('div', { className: 'cloud-canvas', ref: mount }),
     !compact && (0, p.jsxs)('div', { className: 'field-colorbar', children: [
@@ -4807,7 +4810,7 @@ function Fu({axis:e,value:t,range:n,onCommit:r}){let[i,a]=(0,d.useState)(Number(
               }),
               (0, p.jsx)(`p`, {
                 className: `caption`,
-                children: C?.fieldGeometry ? `X 沿线圈轴向 · Z 向上 · 左圈 0 cm / 中点 ${fieldCm(C.fieldGeometry.spacing / 2)} cm / 右圈 ${fieldCm(C.fieldGeometry.spacing)} cm · 拖动旋转，点击取点` : `X 沿线圈轴向 · Z 向上 · 保留数据原点；缺少明确线圈参数时不绘制线圈模型 · 拖动旋转，点击取点`,
+                children: C?.fieldGeometry ? `X 沿线圈轴向 · Z 向上 · 左圈 0 cm / 中点 ${fieldPositionCm(C.fieldGeometry.spacing / 2)} cm / 右圈 ${fieldPositionCm(C.fieldGeometry.spacing)} cm · 拖动旋转，点击取点` : `X 沿线圈轴向 · Z 向上 · 保留数据原点；缺少明确线圈参数时不绘制线圈模型 · 拖动旋转，点击取点`,
               }),
             ],
           }),
