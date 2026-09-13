@@ -4240,14 +4240,14 @@ void main() {
     return { coordinate: s, b: r.sample(c.x, c.y, c.z) };
   });
 }
-function ou(e,t,n){let r=Ql(n===t?.5:(e-t)/(n-t)),i=[[0,[25,67,224]],[.22,[0,174,255]],[.45,[19,220,174]],[.66,[190,235,55]],[.82,[255,174,40]],[1,[255,54,66]]],a=i[0],o=i.at(-1);for(let e=1;e<i.length;e++)if(r<=i[e][0]){a=i[e-1],o=i[e];break}let s=(r-a[0])/(o[0]-a[0]||1);return a[1].map((e,t)=>Math.round(e+(o[1][t]-e)*s))}function su(){let e=[];for(let t=-10;t<=10;t+=2.5)for(let n=-10;n<=10;n+=2.5)for(let r=-10;r<=10;r+=2.5){let i=t*t+n*n,a=.16+1.55*Math.exp(-i/35)*(.48+Math.exp(-1*(Math.abs(r)-3.4)**2/9));e.push({x:t,y:n,z:r,b:a})}return e}function cu(e){let t=t=>{let n=e.map(e=>e[t]);return[Math.min(...n),Math.max(...n)]},n=t(`x`),r=t(`y`),i=t(`z`);return{x:n,y:r,z:i,span:Math.max(n[1]-n[0],r[1]-r[0],i[1]-i[0],1e-6),center:{x:(n[0]+n[1])/2,y:(r[0]+r[1])/2,z:(i[0]+i[1])/2}}}var lu=e=>e.reduce((e,t)=>Math.abs(t)<Math.abs(e)?t:e,e[0]);function uu(e,t,n,r,i){let a=document.createElement(`canvas`);a.width=96,a.height=96;let o=a.getContext(`2d`),s=o.createImageData(96,96),c={x:[e.xs[0],e.xs.at(-1)],y:[e.ys[0],e.ys.at(-1)],z:[e.zs[0],e.zs.at(-1)]};for(let a=0;a<96;a++)for(let o=0;o<96;o++){let l={x:n,y:n,z:n};l[r]=c[r][0]+(c[r][1]-c[r][0])*o/95,l[i]=c[i][1]-(c[i][1]-c[i][0])*a/95,l[t]=n;let[u,d,f]=ou(e.sample(l.x,l.y,l.z),e.minB,e.maxB),p=(a*96+o)*4;s.data[p]=u,s.data[p+1]=d,s.data[p+2]=f,s.data[p+3]=138}o.putImageData(s,0,0);let l=new Vi(a);return l.colorSpace=Qe,l.minFilter=w,l.magFilter=w,l}function du(e,t,n,r){let i=(e,n)=>(n-t.center[e])/t.span*2.7,a=i(`x`,t.x[0]),o=i(`x`,t.x[1]),s=i(`y`,t.y[0]),c=i(`y`,t.y[1]),l=i(`z`,t.z[0]),u=i(`z`,t.z[1]),d;if(e===`z`){let e=i(`z`,r);d=[a,s,e,o,s,e,o,c,e,a,c,e]}else if(e===`y`){let e=i(`y`,r);d=[a,e,l,o,e,l,o,e,u,a,e,u]}else{let e=i(`x`,r);d=[e,s,l,e,c,l,e,c,u,e,s,u]}let f=new Hr;return f.setAttribute(`position`,new Ar(d,3)),f.setAttribute(`uv`,new Ar([0,0,1,0,1,1,0,1],2)),f.setIndex([0,1,2,0,2,3]),f.computeVertexNormals(),f}function fu(e, t, n, r, i, a, o) {
+function ou(e,t,n){let r=Ql(n===t?.5:(e-t)/(n-t)),i=[[0,[25,67,224]],[.22,[0,174,255]],[.45,[19,220,174]],[.66,[190,235,55]],[.82,[255,174,40]],[1,[255,54,66]]],a=i[0],o=i.at(-1);for(let e=1;e<i.length;e++)if(r<=i[e][0]){a=i[e-1],o=i[e];break}let s=(r-a[0])/(o[0]-a[0]||1);return a[1].map((e,t)=>Math.round(e+(o[1][t]-e)*s))}function su(){let e=[];for(let t=-10;t<=10;t+=2.5)for(let n=-10;n<=10;n+=2.5)for(let r=-10;r<=10;r+=2.5){let i=t*t+n*n,a=.16+1.55*Math.exp(-i/35)*(.48+Math.exp(-1*(Math.abs(r)-3.4)**2/9));e.push({x:t,y:n,z:r,b:a})}return e}function cu(e){let t=t=>{let n=e.map(e=>e[t]);return[Math.min(...n),Math.max(...n)]},n=t(`x`),r=t(`y`),i=t(`z`);return{x:n,y:r,z:i,span:Math.max(n[1]-n[0],r[1]-r[0],i[1]-i[0],1e-6),center:{x:(n[0]+n[1])/2,y:(r[0]+r[1])/2,z:(i[0]+i[1])/2}}}var lu=e=>e.reduce((e,t)=>Math.abs(t)<Math.abs(e)?t:e,e[0]);function uu(e,t,n,r,i){let a=document.createElement(`canvas`);a.width=96,a.height=96;let o=a.getContext(`2d`),s=o.createImageData(96,96),c={x:[e.xs[0],e.xs.at(-1)],y:[e.ys[0],e.ys.at(-1)],z:[e.zs[0],e.zs.at(-1)]};for(let a=0;a<96;a++)for(let o=0;o<96;o++){let l={x:n,y:n,z:n};l[r]=c[r][0]+(c[r][1]-c[r][0])*o/95,l[i]=c[i][1]-(c[i][1]-c[i][0])*a/95,l[t]=n;let[u,d,f]=ou(e.sample(l.x,l.y,l.z),e.minB,e.maxB),p=(a*96+o)*4;s.data[p]=u,s.data[p+1]=d,s.data[p+2]=f,s.data[p+3]=235}o.putImageData(s,0,0);let l=new Vi(a);return l.colorSpace=Qe,l.minFilter=w,l.magFilter=w,l}function du(e,t,n,r){let i=(e,n)=>(n-t.center[e])/t.span*2.7,a=i(`x`,t.x[0]),o=i(`x`,t.x[1]),s=i(`y`,t.y[0]),c=i(`y`,t.y[1]),l=i(`z`,t.z[0]),u=i(`z`,t.z[1]),d;if(e===`z`){let e=i(`z`,r);d=[a,s,e,o,s,e,o,c,e,a,c,e]}else if(e===`y`){let e=i(`y`,r);d=[a,e,l,o,e,l,o,e,u,a,e,u]}else{let e=i(`x`,r);d=[e,s,l,e,c,l,e,c,u,e,s,u]}let f=new Hr;return f.setAttribute(`position`,new Ar(d,3)),f.setAttribute(`uv`,new Ar([0,0,1,0,1,1,0,1],2)),f.setIndex([0,1,2,0,2,3]),f.computeVertexNormals(),f}function fu(e, t, n, r, i, a, o) {
   let s = r === `x` && Number.isFinite(n.axisCenter) ? n.axisCenter : lu(r === `x` ? t.xs : r === `y` ? t.ys : t.zs),
     c = uu(t, r, s, i, a),
     l = du(r, n, null, s),
     u = new ei({
       map: c,
       transparent: !0,
-      opacity: 0.38,
+      opacity: 0.86,
       side: 2,
       depthWrite: !1,
       blending: 1,
@@ -4256,6 +4256,22 @@ function ou(e,t,n){let r=Ql(n===t?.5:(e-t)/(n-t)),i=[[0,[25,67,224]],[.22,[0,174
   ((d.renderOrder = 1), e.add(d), o.push(c, l, u));
 }
 // Experiment coordinates: X along the coils, Z up, Y toward the viewer.
+// Experiment coordinates: X along the coils, Z up, Y toward the viewer.
+function fieldCm(value) { return Number(value.toFixed(2)).toString(); }
+function fieldMeasuredModes(root) {
+  const modes = new Set();
+  // A generated cloud is not evidence of an experiment. Require recorded points.
+  for (const group of Array.isArray(root.groups) ? root.groups : []) {
+    for (const point of Array.isArray(group.points) ? group.points : []) {
+      if (!Mu([point]).length) continue;
+      const state = point.coilState ?? group.coilState;
+      if (state === null || state === undefined || state === '') continue;
+      const mode = { '0': 'Single', '1': 'DoubleSame', '-1': 'DoubleOpposite' }[String(state)];
+      if (mode) modes.add(mode);
+    }
+  }
+  return modes;
+}
 function fieldScenePosition(point, bounds) {
   const scale = 2.7 / bounds.span;
   return new q((point.x - bounds.center.x) * scale,
@@ -4356,9 +4372,9 @@ function mu({ compact = false, onPoint, data, selectedPoint, showSlices = true, 
     pu(scene, bounds, resources, geometry);
     if (geometry) {
       label('左圈 0', origin);
-      label('右圈 ' + geometry.spacing + ' cm', fieldScenePosition({ x: geometry.spacing, y: 0, z: 0 }, bounds));
+      label('右圈 ' + fieldCm(geometry.spacing) + ' cm', fieldScenePosition({ x: geometry.spacing, y: 0, z: 0 }, bounds));
       const midpoint = fieldScenePosition({ x: geometry.spacing / 2, y: 0, z: 0 }, bounds);
-      label('中点 ' + geometry.spacing / 2 + ' cm', midpoint, '#ffe1a6');
+      label('中点 ' + fieldCm(geometry.spacing / 2) + ' cm', midpoint, '#ffe1a6');
     }
     const positions = [], colors = [], strengths = [];
     dense.forEach(point => {
@@ -4471,8 +4487,10 @@ var hu=[[`◇`,`Unity虚拟实验`,`基于Unity构建虚拟实验环境，实现
         stateRight: ju(e?.stateRight),
         points: Mu(Array.isArray(e?.points) ? e.points : []),
       }))
-      .filter((e) => e.points.length)
+      .filter((field) => field.points.length && fieldMeasuredModes(e).has(field.mode))
       .map(field => fieldNormalizeCloud(e, field));
+  // cloudPoints duplicates an automatically generated field with no reliable mode metadata.
+  if (Array.isArray(e?.groups)) r = [];
   if (!n.length && !r.length && !i.length)
     throw Error(
       `没有找到有效数据。需要 groups[].points[]、cloudFields[].points[]、cloudPoints[]，或 x/y/z/B 数组。`,
@@ -4548,7 +4566,7 @@ function Fu({axis:e,value:t,range:n,onCommit:r}){let[i,a]=(0,d.useState)(Number(
             )),
           o.length ? E(l, o) : (a(i.length ? i : null), S(n[0] || i[0])));
         let u = o.length ? o[l].points.length : i.length || n.length,
-          d = o.length ? ` · 可切换 ${o.length} 套云图` : ``;
+          d = o.length ? ` · 仅显示已记录的 ${o.length} 种接线模式` : ``;
         e?.score && typeof e.score == `object`
           ? (sessionStorage.setItem(`magnova-score`, JSON.stringify(e.score)),
             f(
@@ -4579,7 +4597,7 @@ function Fu({axis:e,value:t,range:n,onCommit:r}){let[i,a]=(0,d.useState)(Number(
       },
       {
         title: `YZ 截面`,
-        sub: `x ≈ ${i?.fieldGeometry ? i.fieldGeometry.spacing / 2 : 0} cm`,
+        sub: `x ≈ ${i?.fieldGeometry ? fieldCm(i.fieldGeometry.spacing / 2) : 0} cm`,
         data: Pu(i, `x`) || n,
         axes: [`y`, `z`],
       },
@@ -4698,7 +4716,7 @@ function Fu({axis:e,value:t,range:n,onCommit:r}){let[i,a]=(0,d.useState)(Number(
               }),
               (0, p.jsx)(`p`, {
                 className: `caption`,
-                children: C?.fieldGeometry ? `X 沿线圈轴向 · Z 向上 · 左圈 0 cm / 中点 ${C.fieldGeometry.spacing / 2} cm / 右圈 ${C.fieldGeometry.spacing} cm · 拖动旋转，点击取点` : `X 沿线圈轴向 · Z 向上 · 保留数据原点；缺少明确线圈参数时不绘制线圈模型 · 拖动旋转，点击取点`,
+                children: C?.fieldGeometry ? `X 沿线圈轴向 · Z 向上 · 左圈 0 cm / 中点 ${fieldCm(C.fieldGeometry.spacing / 2)} cm / 右圈 ${fieldCm(C.fieldGeometry.spacing)} cm · 拖动旋转，点击取点` : `X 沿线圈轴向 · Z 向上 · 保留数据原点；缺少明确线圈参数时不绘制线圈模型 · 拖动旋转，点击取点`,
               }),
             ],
           }),
@@ -4987,4 +5005,12 @@ var Lu={total:92,basicTask:37,dataQuality:18,analysis:23,exploration:14},Ru=[[`b
 .field-space-label{position:absolute;pointer-events:none;z-index:2;font:11px sans-serif;white-space:nowrap;transform:translate(7px,7px);text-shadow:0 1px 4px #00101f,0 0 3px #00101f;background:#061625aa;padding:3px 5px;border-radius:3px}
 .field-probe-label{transform:translate(12px,-36px);border:1px solid #ffe1a680;color:#fff!important;background:#102635ee;font-size:12px}
 .cloud-frame.compact .field-space-label{display:none}
+</style><style>
+.field-colorbar{display:block;width:58px;font-size:9px}
+.field-colorbar i{position:absolute;top:14px;bottom:26px;left:0;width:10px;margin:0;background:linear-gradient(#ff3642 0%,#ffae28 18%,#beeb37 34%,#13dcae 55%,#00aeff 78%,#1943e0 100%)}
+.field-colorbar span{position:absolute;left:17px}
+.field-colorbar span:nth-child(1){top:10px}
+.field-colorbar span:nth-child(3){top:calc(50% - 6px);transform:translateY(-50%)}
+.field-colorbar span:nth-child(4){bottom:22px}
+.field-colorbar b{position:absolute;bottom:0;left:0}
 </style></head><body><div id="root"></div></body></html>
