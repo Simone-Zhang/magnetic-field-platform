@@ -4258,6 +4258,7 @@ function ou(e,t,n){let r=Ql(n===t?.5:(e-t)/(n-t)),i=[[0,[25,67,224]],[.22,[0,174
 // Experiment coordinates: X along the coils, Z up, Y toward the viewer.
 // Experiment coordinates: X along the coils, Z up, Y toward the viewer.
 // Experiment coordinates: X along the coils, Z up, Y toward the viewer.
+// Experiment coordinates: X along the coils, Z up, Y toward the viewer.
 function fieldCm(value) { return Number(value.toFixed(2)).toString(); }
 function fieldVolumeShells(scene, sampler, bounds, resources) {
   // Nested isosurfaces of the imported scalar field. No synthetic lobes or peaks.
@@ -4364,6 +4365,25 @@ function pu(scene, bounds, resources, geometry) {
   return group;
 }
 function mu({ compact = false, onPoint, data, selectedPoint, showSlices = true, showCloud = true }) {
+  const [fieldView, setFieldView] = (0,d.useState)('center');
+  const geometryInfo=data?.fieldGeometry;
+  const centerAvailable=!!geometryInfo?.diameter && data?.length>0;
+  const isCenter=!compact && centerAvailable && fieldView==='center';
+  const centerData=(0,d.useMemo)(()=>{
+    if(!centerAvailable)return null;
+    const source=ru(data),bound=cu(data),radius=geometryInfo.diameter*0.15;
+    const region={x:[Math.max(0,bound.x[0]),Math.min(geometryInfo.spacing,bound.x[1])],
+      y:[Math.max(-radius,bound.y[0]),Math.min(radius,bound.y[1])],
+      z:[Math.max(-radius,bound.z[0]),Math.min(radius,bound.z[1])]};
+    if(['x','y','z'].some(axis=>region[axis][1]<=region[axis][0]))return null;
+    const points=[];
+    for(let x=0;x<17;x++)for(let y=0;y<17;y++)for(let z=0;z<17;z++){
+      const point={};[x,y,z].forEach((v,i)=>{const axis=['x','y','z'][i];point[axis]=region[axis][0]+v/16*(region[axis][1]-region[axis][0]);});
+      point.b=source.sample(point.x,point.y,point.z);points.push(point);
+    }
+    return {points,region,max:Math.max(...points.map(point=>point.b))};
+  },[data,centerAvailable]);
+  const centerActive=isCenter&&!!centerData;
   const mount = (0, d.useRef)(null);
   const pointRef = (0, d.useRef)(selectedPoint);
   pointRef.current = selectedPoint;
@@ -4371,8 +4391,10 @@ function mu({ compact = false, onPoint, data, selectedPoint, showSlices = true, 
     const host = mount.current;
     if (!host) return;
     const samples = data?.length ? data : su();
-    const sampler = ru(samples), bounds = cu(samples), geometry = samples.fieldGeometry;
-    const dense = compact ? samples : iu(samples, 21), resources = [];
+    const bounds = cu(samples), geometry = samples.fieldGeometry;
+    const sampler = ru(centerActive?centerData.points:samples);
+    if(centerActive)sampler.minB=0;
+    const dense = centerActive?centerData.points:compact ? samples : iu(samples, 21), resources = [];
     const scene = new Jn();
     const camera = new La(40, Math.max(1, host.clientWidth) / Math.max(1, host.clientHeight), 0.1, 100);
     camera.position.set(3.4, 2.5, 4.25);
@@ -4431,17 +4453,18 @@ function mu({ compact = false, onPoint, data, selectedPoint, showSlices = true, 
     shape.setAttribute('strength', new Ar(strengths, 1));
     const material = new sa({ transparent: true, vertexColors: true, depthWrite: false, blending: 1,
       vertexShader: 'attribute float strength;varying vec3 vColor;varying float vStrength;void main(){vColor=color;vStrength=strength;vec4 view=modelViewMatrix*vec4(position,1.0);gl_Position=projectionMatrix*view;gl_PointSize=(1.0+2.2*strength)*(150.0/-view.z);}',
-      fragmentShader: 'void main(){discard;}' });
+      fragmentShader: centerActive?'varying vec3 vColor;varying float vStrength;void main(){vec2 p=gl_PointCoord-0.5;float d=dot(p,p);if(d>0.25)discard;gl_FragColor=vec4(vColor,exp(-d*20.0)*0.11);}':'void main(){discard;}' });
     const cloud = new Ri(shape, material); cloud.visible = showCloud; scene.add(cloud); resources.push(shape, material);
-    if(showCloud) fieldVolumeShells(scene,sampler,bounds,resources);
+    if(showCloud&&!centerActive) fieldVolumeShells(scene,sampler,bounds,resources);
     if (!compact && showSlices) {
       bounds.axisCenter = geometry ? geometry.spacing / 2 : 0;
       // The existing slice geometry is in experiment XYZ. Swap Y/Z once as for points.
       const sliceGroup = new Rn(); sliceGroup.scale.set(1, 1, -1); sliceGroup.rotation.x = Math.PI / 2;
       scene.add(sliceGroup);
-      fu(sliceGroup, sampler, bounds, 'z', 'x', 'y', resources);
-      fu(sliceGroup, sampler, bounds, 'y', 'x', 'z', resources);
-      fu(sliceGroup, sampler, bounds, 'x', 'y', 'z', resources);
+      const sliceBounds=centerActive?{...bounds,...centerData.region}:bounds;
+      fu(sliceGroup, sampler, sliceBounds, 'z', 'x', 'y', resources);
+      fu(sliceGroup, sampler, sliceBounds, 'y', 'x', 'z', resources);
+      fu(sliceGroup, sampler, sliceBounds, 'x', 'y', 'z', resources);
     }
     const probeShape = new Zi(0.045, 20, 16), probeMaterial = new ei({ color: 0xffffff, depthTest: false });
     const probe = new fi(probeShape, probeMaterial); probe.renderOrder = 10; scene.add(probe); resources.push(probeShape, probeMaterial);
@@ -4496,16 +4519,40 @@ function mu({ compact = false, onPoint, data, selectedPoint, showSlices = true, 
       renderer.domElement.removeEventListener('pointerdown', pointerDown); renderer.domElement.removeEventListener('pointerup', pointerUp);
       resources.forEach(resource => resource?.dispose?.()); renderer.dispose(); host.replaceChildren();
     };
-  }, [compact, onPoint, data, showSlices, showCloud]);
+  }, [compact, onPoint, data, showSlices, showCloud, centerActive, centerData]);
   const values = data?.map(point => point.b).filter(Number.isFinite) || [];
-  const min = values.length ? Math.min(...values) : 0, max = values.length ? Math.max(...values) : 2;
+  const min = centerActive?0:values.length ? Math.min(...values) : 0, max = centerActive?centerData.max:values.length ? Math.max(...values) : 2;
+  const axisPoints=(0,d.useMemo)(()=>{
+    if(!data?.length)return [];
+    const source=ru(data);
+    if(source.ys[0]>0||source.ys.at(-1)<0||source.zs[0]>0||source.zs.at(-1)<0)return [];
+    return Array.from({length:121},(_,i)=>{const coordinate=source.xs[0]+(source.xs.at(-1)-source.xs[0])*i/120;return {coordinate,b:source.sample(coordinate,0,0)};});
+  },[data]);
+  const axisMax=Math.max(...axisPoints.map(point=>point.b),0.000001)*1.08;
+  const axisMinX=axisPoints[0]?.coordinate||0,axisMaxX=axisPoints.at(-1)?.coordinate||1;
+  const axisPath=axisPoints.map((point,index)=>`${index?'L':'M'}${40+(point.coordinate-axisMinX)/(axisMaxX-axisMinX||1)*480},${105-point.b/axisMax*75}`).join(' ');
   return (0, p.jsxs)('div', { className: `cloud-frame ${compact ? 'compact' : ''}`, children: [
+    !compact&&(0,p.jsxs)('div',{className:'field-view-switch',children:[
+      (0,p.jsx)('button',{disabled:!centerAvailable||!centerData,className:centerActive?'active':'',onClick:()=>setFieldView('center'),children:'中心测量区域'}),
+      (0,p.jsx)('button',{className:!centerActive?'active':'',onClick:()=>setFieldView('full'),children:'完整空间（含导线附近）'}),
+      (0,p.jsx)('small',{children:centerActive?`仅显示 X=${fieldCm(centerData.region.x[0])}～${fieldCm(centerData.region.x[1])} cm，Y/Z 在 ±${fieldCm(geometryInfo.diameter*.15)} cm 内；色标 0～区域最大值`:'全空间色标；红色表示当前数据中的高场强，可能位于导线附近'})
+    ]}),
     (0, p.jsx)('div', { className: 'cloud-canvas', ref: mount }),
     !compact && (0, p.jsxs)('div', { className: 'field-colorbar', children: [
       (0, p.jsx)('span', { children: max.toFixed(2) }), (0, p.jsx)('i', {}),
       (0, p.jsx)('span', { children: ((min + max) / 2).toFixed(2) }),
       (0, p.jsx)('span', { children: min.toFixed(2) }), (0, p.jsx)('b', { children: 'B (mT)' })
-    ] })
+    ] }),
+    !compact&&axisPoints.length>1&&(0,p.jsxs)('div',{className:'field-axis-check',children:[
+      (0,p.jsx)('b',{children:'中心轴 B–X · Y=0，Z=0（网格插值）'}),
+      (0,p.jsxs)('svg',{viewBox:'0 0 550 135',role:'img','aria-label':'中心轴磁场强度曲线',children:[
+        (0,p.jsx)('path',{d:'M40 25V105H520',fill:'none',stroke:'#567c89'}),
+        geometryInfo&&(0,p.jsx)('rect',{x:40+(Math.max(axisMinX,0)-axisMinX)/(axisMaxX-axisMinX)*480,y:25,width:Math.max(0,(Math.min(axisMaxX,geometryInfo.spacing)-Math.max(axisMinX,0))/(axisMaxX-axisMinX)*480),height:80,fill:'#5ae5c018'}),
+        (0,p.jsx)('path',{d:axisPath,fill:'none',stroke:'#58e4e9',strokeWidth:2}),
+        ...[[4,30,fieldCm(axisMax)+' mT'],[20,108,'0'],[40,123,fieldCm(axisMinX)],[485,123,fieldCm(axisMaxX)+' cm']].map(([x,y,text],i)=>(0,p.jsx)('text',{x,y,fill:'#abcbd4',fontSize:10,children:text},i))
+      ]}),
+      (0,p.jsx)('small',{children:'浅色区为两线圈之间。观察轴线上的平坦程度；云团颜色与该曲线来自同一份数据。'})
+    ]})
   ] });
 }
 
@@ -4738,7 +4785,7 @@ function Fu({axis:e,value:t,range:n,onCommit:r}){let[i,a]=(0,d.useState)(Number(
                     children: [
                       `三维磁场分布云图`,
                       (0, p.jsx)(`small`, {
-                        children: `B = f(x, y, z) · 分层等值面`,
+                        children: `B = f(x, y, z) · 中心区域 / 全空间`,
                       }),
                     ],
                   }),
@@ -5057,4 +5104,4 @@ var Lu={total:92,basicTask:37,dataQuality:18,analysis:23,exploration:14},Ru=[[`b
 .field-colorbar span:nth-child(3){top:calc(50% - 6px);transform:translateY(-50%)}
 .field-colorbar span:nth-child(4){bottom:22px}
 .field-colorbar b{position:absolute;bottom:0;left:0}
-</style></head><body><div id="root"></div></body></html>
+</style><style>.field-view-switch{display:flex;flex-wrap:wrap;gap:7px;padding:10px 12px;background:#091e29}.field-view-switch button{padding:7px 10px;font-size:11px}.field-view-switch .active{border-color:#63e4da;color:#c1fff3;background:#124337}.field-view-switch button:disabled{opacity:.4}.field-view-switch small{flex-basis:100%;color:#9bbbc5;font-size:10px}.field-axis-check{padding:10px 14px;background:#081a26;border-top:1px solid #274654}.field-axis-check b{font-size:11px;color:#cff3ee}.field-axis-check svg{display:block;width:100%;height:145px}.field-axis-check small{font-size:10px;color:#8cb1bb}.volume-card .field-colorbar{top:104px;bottom:auto;height:320px}</style><style>body .volume-card .cloud-frame{height:auto;overflow:visible}body .volume-card .cloud-frame .cloud-canvas{height:390px}.field-axis-check{position:relative}</style></head><body><div id="root"></div></body></html>
