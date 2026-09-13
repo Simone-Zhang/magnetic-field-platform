@@ -4247,7 +4247,7 @@ function ou(e,t,n){let r=Ql(n===t?.5:(e-t)/(n-t)),i=[[0,[25,67,224]],[.22,[0,174
     u = new ei({
       map: c,
       transparent: !0,
-      opacity: 0.86,
+      opacity: 0.12,
       side: 2,
       depthWrite: !1,
       blending: 1,
@@ -4257,7 +4257,50 @@ function ou(e,t,n){let r=Ql(n===t?.5:(e-t)/(n-t)),i=[[0,[25,67,224]],[.22,[0,174
 }
 // Experiment coordinates: X along the coils, Z up, Y toward the viewer.
 // Experiment coordinates: X along the coils, Z up, Y toward the viewer.
+// Experiment coordinates: X along the coils, Z up, Y toward the viewer.
 function fieldCm(value) { return Number(value.toFixed(2)).toString(); }
+function fieldVolumeShells(scene, sampler, bounds, resources) {
+  // Nested isosurfaces of the imported scalar field. No synthetic lobes or peaks.
+  const count = 25, vertices = [], values = [];
+  for (let x=0;x<count;x++) for(let y=0;y<count;y++) for(let z=0;z<count;z++) {
+    const point={x:bounds.x[0]+(bounds.x[1]-bounds.x[0])*x/(count-1),
+      y:bounds.y[0]+(bounds.y[1]-bounds.y[0])*y/(count-1),
+      z:bounds.z[0]+(bounds.z[1]-bounds.z[0])*z/(count-1)};
+    vertices.push(fieldScenePosition(point,bounds)); values.push(sampler.sample(point.x,point.y,point.z));
+  }
+  const index=(x,y,z)=>(x*count+y)*count+z;
+  const tetrahedra=[[0,5,1,6],[0,1,2,6],[0,2,3,6],[0,3,7,6],[0,7,4,6],[0,4,5,6]];
+  const levels=[0.08,0.18,0.30,0.43,0.56,0.69,0.81,0.91,0.975];
+  if(sampler.maxB-sampler.minB<1e-12) return;
+  levels.forEach((fraction, layer)=>{
+    const threshold=sampler.minB+fraction*(sampler.maxB-sampler.minB), triangles=[];
+    const crossing=(a,b)=>vertices[a].clone().lerp(vertices[b],(threshold-values[a])/(values[b]-values[a]));
+    const triangle=(a,b,c)=>triangles.push(...a.toArray(),...b.toArray(),...c.toArray());
+    for(let x=0;x<count-1;x++) for(let y=0;y<count-1;y++) for(let z=0;z<count-1;z++) {
+      const cube=[index(x,y,z),index(x+1,y,z),index(x+1,y+1,z),index(x,y+1,z),index(x,y,z+1),index(x+1,y,z+1),index(x+1,y+1,z+1),index(x,y+1,z+1)];
+      const cubeValues=cube.map(i=>values[i]);
+      if(Math.min(...cubeValues)>=threshold||Math.max(...cubeValues)<threshold)continue;
+      for(const tetra of tetrahedra){
+        const inside=[],outside=[];
+        tetra.map(i=>cube[i]).forEach(i=>(values[i]>=threshold?inside:outside).push(i));
+        if(inside.length===1)triangle(...outside.map(i=>crossing(inside[0],i)));
+        else if(inside.length===3)triangle(...inside.map(i=>crossing(outside[0],i)));
+        else if(inside.length===2){
+          const a=crossing(inside[0],outside[0]), b=crossing(inside[0],outside[1]);
+          const c=crossing(inside[1],outside[0]), d=crossing(inside[1],outside[1]);
+          triangle(a,b,c);triangle(b,d,c);
+        }
+      }
+    }
+    if(!triangles.length)return;
+    const shape=new Hr();shape.setAttribute('position',new Ar(triangles,3));
+    const color=ou(threshold,sampler.minB,sampler.maxB);
+    const material=new ei({color:(color[0]<<16)|(color[1]<<8)|color[2],transparent:true,
+      opacity:layer<3?0.10:layer<6?0.18:layer===6?0.48:0.92,side:2,depthWrite:false});
+    const mesh=new fi(shape,material);mesh.renderOrder=2+layer*0.2;
+    scene.add(mesh);resources.push(shape,material);
+  });
+}
 function fieldMeasuredModes(root) {
   const modes = new Set();
   // A generated cloud is not evidence of an experiment. Require recorded points.
@@ -4388,8 +4431,9 @@ function mu({ compact = false, onPoint, data, selectedPoint, showSlices = true, 
     shape.setAttribute('strength', new Ar(strengths, 1));
     const material = new sa({ transparent: true, vertexColors: true, depthWrite: false, blending: 1,
       vertexShader: 'attribute float strength;varying vec3 vColor;varying float vStrength;void main(){vColor=color;vStrength=strength;vec4 view=modelViewMatrix*vec4(position,1.0);gl_Position=projectionMatrix*view;gl_PointSize=(1.0+2.2*strength)*(150.0/-view.z);}',
-      fragmentShader: 'varying vec3 vColor;varying float vStrength;void main(){vec2 p=gl_PointCoord-0.5;float d=dot(p,p);if(d>0.25)discard;float alpha=exp(-d*16.0)*(0.008+vStrength*0.065);gl_FragColor=vec4(vColor,alpha);}' });
+      fragmentShader: 'void main(){discard;}' });
     const cloud = new Ri(shape, material); cloud.visible = showCloud; scene.add(cloud); resources.push(shape, material);
+    if(showCloud) fieldVolumeShells(scene,sampler,bounds,resources);
     if (!compact && showSlices) {
       bounds.axisCenter = geometry ? geometry.spacing / 2 : 0;
       // The existing slice geometry is in experiment XYZ. Swap Y/Z once as for points.
@@ -4694,7 +4738,7 @@ function Fu({axis:e,value:t,range:n,onCommit:r}){let[i,a]=(0,d.useState)(Number(
                     children: [
                       `三维磁场分布云图`,
                       (0, p.jsx)(`small`, {
-                        children: `B = f(x, y, z) · 三线性插值`,
+                        children: `B = f(x, y, z) · 分层等值面`,
                       }),
                     ],
                   }),
