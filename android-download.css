@@ -1,0 +1,24 @@
+android-download { display: inline-flex; flex-shrink: 0; }
+android-download .android-download-control { margin: 0; white-space: nowrap; }
+android-download[data-state="ready"] .android-download-control {
+  border-color: var(--cyan, #55dce4);
+  background: #123a3f;
+  color: #c5fff1;
+}
+android-download .android-download-control:disabled {
+  opacity: .65;
+  cursor: not-allowed;
+  background: #102631;
+  color: #abc1c8;
+  border-color: #43616d;
+  box-shadow: none;
+  transform: none;
+}
+.actions { flex-wrap: wrap; }
+.download { flex-wrap: wrap; }
+.download .future { flex-basis: 100%; color: #84a9b2; }
+.android-download-control:focus-visible { outline: 2px solid #a7ffdc; outline-offset: 4px; }
+@media (max-width: 580px) {
+  .download > .button, .download > android-download { flex: 1 1 180px; margin-left: 0; }
+  .download android-download .button { width: 100%; justify-content: center; text-align: center; }
+}
