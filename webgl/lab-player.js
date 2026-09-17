@@ -11,8 +11,8 @@
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   let finished = false, failed = false, lastProgress = Date.now(), amount = 0;
   const config = window.labConfig;
-  // A high-DPI phone must not render nine times as many pixels by default.
-  config.devicePixelRatio = mobile ? 1 : Math.min(window.devicePixelRatio || 1, 2);
+  // Use the phone's native pixel density; do not lower mobile image quality.
+  config.devicePixelRatio = mobile ? (window.devicePixelRatio || 1) : Math.min(window.devicePixelRatio || 1, 2);
   const nativeFullscreen = () => document.fullscreenElement || document.webkitFullscreenElement;
   function updateFullscreen() {
     fullscreen.textContent = nativeFullscreen() || document.body.classList.contains('expanded')
