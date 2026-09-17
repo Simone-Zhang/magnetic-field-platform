@@ -1,0 +1,46 @@
+{
+  "datasets": [
+    {
+      "id": "unity_experiment_exports",
+      "title": "Unity 实验导出快照",
+      "description": "由 Unity 客户端人工批准后放入 MCPData 的 JSON/JSONL/CSV/TSV 实验快照。",
+      "rootEnv": "MCP_UNITY_DATA_ROOT",
+      "defaultRoot": "D:\\31508\\location2\\final Experiment\\MCPData",
+      "extensions": [".json", ".jsonl", ".csv", ".tsv"],
+      "kind": "records",
+      "allowedFields": [
+        "recordType", "schemaVersion", "exportTime", "experimentMode", "experimentType",
+        "groupIndex", "groupMode", "groupCoilState", "fieldMode", "xCm", "yCm", "zCm", "angleDeg",
+        "frequencyHz", "currentmA", "voltagemV", "coilState", "coilSpacingCm", "sourceTurns",
+        "sourceDiameterCm", "probeTurns", "probeDiameterCm", "probeEffectiveAreaCm2", "BxT", "ByT",
+        "BzT", "BT", "BmT", "hasTheoreticalField", "usedForCloud", "score", "value", "count"
+      ]
+    },
+    {
+      "id": "platform_approved_exports",
+      "title": "平台批准的业务快照",
+      "description": "人工批准后放入 mcp-data 的去标识化 JSON/JSONL/CSV/TSV 业务快照。",
+      "rootEnv": "MCP_PLATFORM_DATA_ROOT",
+      "defaultRoot": "D:\\31508\\Documents\\GithubPlatform\\magnetic-field-platform\\mcp-data",
+      "extensions": [".json", ".jsonl", ".csv", ".tsv"],
+      "kind": "records",
+      "allowedFields": [
+        "recordType", "schemaVersion", "exportTime", "experimentMode", "experimentType",
+        "groupIndex", "groupMode", "groupCoilState", "fieldMode", "xCm", "yCm", "zCm", "angleDeg",
+        "frequencyHz", "currentmA", "voltagemV", "coilState", "coilSpacingCm", "sourceTurns",
+        "sourceDiameterCm", "probeTurns", "probeDiameterCm", "probeEffectiveAreaCm2", "BxT", "ByT",
+        "BzT", "BT", "BmT", "hasTheoreticalField", "usedForCloud", "score", "value", "count"
+      ]
+    },
+    {
+      "id": "platform_report_artifacts",
+      "title": "平台报告制品清单",
+      "description": "只返回 reports 目录内 PDF/PNG 的文件名、大小、修改时间和 SHA-256；不返回二进制正文。",
+      "rootEnv": "MCP_PLATFORM_REPORTS_ROOT",
+      "defaultRoot": "D:\\31508\\Documents\\GithubPlatform\\magnetic-field-platform\\reports",
+      "extensions": [".pdf", ".png"],
+      "kind": "artifacts",
+      "allowedFields": ["name", "sizeBytes", "modifiedAt", "sha256"]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "magnetic-field-readonly-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Private, least-privilege, read-only MCP server for approved magnetic-field experiment snapshots.",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "check": "node --check src/server.js && node --test test/security.test.js && node test/mcp-smoke.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "4.6.5"
+  }
+}

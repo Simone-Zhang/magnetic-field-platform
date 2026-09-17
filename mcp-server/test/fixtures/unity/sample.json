@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.1",
+  "exportTime": "2026-09-17 12:00:00",
+  "experimentMode": "Single",
+  "experimentType": "Exploration",
+  "groups": [
+    {
+      "groupIndex": 1,
+      "groupMode": "Single",
+      "coilState": 1,
+      "usedForCloud": true,
+      "points": [
+        { "xCm": 0, "yCm": 1, "zCm": 2, "frequencyHz": 50, "currentmA": 10, "BmT": 0.25, "api_key": "must-never-appear" },
+        { "xCm": 3, "yCm": 4, "zCm": 5, "frequencyHz": 60, "currentmA": 11, "BmT": 0.5 }
+      ]
+    }
+  ]
+}
