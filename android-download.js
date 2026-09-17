@@ -1,37 +1,13 @@
-// The same component is used in the hero and in the download center.
-// Keep the APK at this stable URL when publishing subsequent versions.
-const apkUrl = new URL('./downloads/magnetic-field-lab.apk', import.meta.url);
-let availability;
-
-async function checkApk() {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
-  try {
-    const response = await fetch(apkUrl, {
-      method: 'HEAD', cache: 'no-cache', signal: controller.signal,
-    });
-    if (response.status === 404) return { state: 'pending' };
-    if (!response.ok) return { state: 'error' };
-    const type = (response.headers.get('content-type') || '').toLowerCase();
-    const length = response.headers.get('content-length');
-    // Some static servers return their HTML fallback for missing files.
-    if (type.includes('text/html') || length === '0') return { state: 'pending' };
-    return { state: 'ready' };
-  } catch {
-    return { state: 'error' };
-  } finally {
-    clearTimeout(timeout);
-  }
-}
+// The APK is a GitHub Release asset because it exceeds the repository's
+// 100 MB per-file limit. Both site entries use this verified public asset.
+const apkUrl = new URL('https://github.com/Simone-Zhang/magnetic-field-platform/releases/download/v1.0.0-android/Android.Unity.apk');
 
 class AndroidDownload extends HTMLElement {
   connectedCallback() {
     if (this.initialized) return;
     this.initialized = true;
     this.setAttribute('aria-live', 'polite');
-    this.render('checking');
-    availability ||= checkApk();
-    availability.then(result => this.render(result.state));
+    this.render('ready');
   }
 
   render(state) {
