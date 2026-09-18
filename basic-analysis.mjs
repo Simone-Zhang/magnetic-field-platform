@@ -42,14 +42,16 @@ function curve(){const {ctx,w,h}=setup('curve');ctx.font='12px system-ui';ctx.fi
  const X=x=>60+(x-min)/(max-min)*(w-90),Y=y=>h-42-y/top*(h-75);
  for(let i=0;i<=5;i++){const y=i*top/5;line(ctx,[[60,Y(y)],[w-30,Y(y)]],'#203c48');ctx.fillText(y.toFixed(3),8,Y(y)+4);const x=min+(max-min)*i/5;ctx.fillText(x.toFixed(1),X(x)-12,h-20);}
  ctx.fillText('B / mT',10,17);ctx.fillText(`${axis.toUpperCase()} / cm`,w-70,h-5);
- if(data.length){line(ctx,data.map(p=>[X(p[axis]),Y(p.theory)]),'#58e2e6',2);for(const p of data){ctx.beginPath();ctx.arc(X(p[axis]),Y(p.b),4,0,Math.PI*2);ctx.fillStyle='#ff945f';ctx.fill();}}
+ if(data.length){for(const key of new Set(data.map(p=>p.groupIndex)))line(ctx,data.filter(p=>p.groupIndex===key).map(p=>[X(p[axis]),Y(p.theory)]),'#58e2e6',2);for(const p of data){ctx.beginPath();ctx.arc(X(p[axis]),Y(p.b),4,0,Math.PI*2);ctx.fillStyle='#ff945f';ctx.fill();}}
  else ctx.fillText('导入报告后，按实际测量位置对比；理论云图已在上方显示。',70,h/2);
 }
 function render(){drawVolume('theory');drawVolume('measured',true);drawSlices();curve();}
 async function compare(){
- const group=report?.groups[Number($('group').value)||0];compared=[];$('rows').replaceChildren();$('metrics').textContent='';
+ const token=++compare.version,all=$('group').value==='all';
+ const selected=report?.groups.map((g,i)=>({...g,points:g.points.map(p=>({...p,groupIndex:i}))})).filter((g,i)=>all||i===Number($('group').value))||[];
+ const group=selected.length?{points:selected.flatMap(g=>g.points)}:null;compared=[];$('rows').replaceChildren();$('metrics').textContent='';
  if(!group){$('condition').textContent='等待导入对应模式的 Word 报告。';$('empty').textContent='尚未导入本模式的报告；不生成虚构实测图。';render();return;}
- const warnings=conditionWarnings(group,mode),token=++compare.version;
+ const warnings=[...new Set(selected.flatMap(g=>conditionWarnings(g,mode)))];
  $('condition').textContent='正在计算对应测量位置的理论值…';
  const local=[];
  for(let i=0;i<group.points.length;i++){
@@ -61,18 +63,20 @@ async function compare(){
    const tr=document.createElement('tr');[i+1,...['x','y','z'].map(a=>p[a].toFixed(2)),p.theory.toFixed(4),p.b.toFixed(4),(p.b-p.theory).toFixed(4)].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.append(td);});frag.append(tr);
  }$('rows').append(frag);
  $('condition').textContent=warnings.length?'条件不同或未确认：'+warnings.join('；')+'。仅展示差值，不作为实验误差。':'条件匹配：400 mA、50 Hz、默认线圈参数及物理坐标已确认。';
- $('empty').textContent=`当前组 ${compared.length} 个真实测量点；竖轴高度为报告中的 B（mT），不是空间 Z。仅显示 Z=0 的点，不补造未测区域。`;
+ const total=report.groups.reduce((sum,g)=>sum+g.points.length,0),visible=compared.filter(p=>Math.abs(p.z)<=.0001).length;
+ $('empty').textContent=`报告共 ${total} 个测量点；${all?'全部 '+selected.length+' 组':'当前组'} ${compared.length} 个记录，上图绘制 ${visible} 个 Z=0 测量点${visible<compared.length?'（非零 Z 点保留在下表）':''}。重合位置可能相互遮挡，记录未去重；竖轴为 B（mT），不补造未测区域。`;
  if(!warnings.length){const rmse=Math.sqrt(compared.reduce((s,p)=>s+(p.b-p.theory)**2,0)/compared.length);$('metrics').textContent=`RMSE 均方根误差：${rmse.toFixed(4)} mT · Word 磁场记录保留 3 位小数，存在取整误差。`;}
  else $('metrics').textContent='未计算误差指标；请按固定条件重新测量，或重新生成带物理坐标的报告。';
  render();
 }
 compare.version=0;
 function setMode(value){compare.version++;mode=value;report=reportCache[mode]||null;for(const v of ['single','double'])$(v).setAttribute('aria-pressed',String(v===mode));$('group').replaceChildren();
+ if(report){const o=document.createElement('option');o.value='all';o.textContent=`全部 ${report.groups.length} 组 · ${report.groups.reduce((n,g)=>n+g.points.length,0)} 点`;$('group').append(o);}
  (report?.groups||[{name:'尚未导入'}]).forEach((g,i)=>{const o=document.createElement('option');o.value=i;o.textContent=`第 ${i+1} 组${g.points?' · '+g.points.length+' 点':' · 尚未导入'}`;$('group').append(o);});compare();}
 $('file').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{
  if(!/\.docx$/i.test(file.name))throw Error('请选择 .docx 报告，不支持 .doc。');
  $('status').textContent='正在读取报告…';const parsed=parseReport(await documentXml(await file.arrayBuffer()));
- reportCache[parsed.mode]=parsed;setMode(parsed.mode);$('status').textContent=`已导入 ${file.name} · ${parsed.groups.length} 组 · 文件仅在浏览器内读取，未上传。`;
+ reportCache[parsed.mode]=parsed;setMode(parsed.mode);$('status').textContent=`已导入 ${file.name} · ${parsed.groups.length} 组 · 共 ${parsed.groups.reduce((n,g)=>n+g.points.length,0)} 个测量点 · 文件仅在浏览器内读取，未上传。`;
  }catch(err){$('status').textContent='导入失败：'+err.message+' 原有数据未被替换。';}finally{e.target.value='';}});
 for(const v of ['single','double'])$(v).onclick=()=>setMode(v);
 $('group').onchange=compare;$('axis').onchange=curve;
