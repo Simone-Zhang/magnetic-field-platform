@@ -1,6 +1,5 @@
-import {fieldAt} from './basic-model.mjs';
-import {documentXml,parseReport,reportOverview} from './basic-docx.mjs';
-import {fitSurface} from './basic-fit.mjs';
+import {documentXml,parseReport,reportOverview} from './basic-docx.mjs?v=20260919-measured-mesh4';
+import {fitSurface} from './basic-fit.mjs?v=20260919-measured-mesh4';
 const $=id=>document.getElementById(id);
 let mode='single', report=null, grid=null, compared=[], yaw=-.65,pitch=.46,zoom=1;
 const reportCache={};
@@ -16,18 +15,19 @@ function drawVolume(id,measured=false){
  for(let k=-15;k<=25;k+=5)line(ctx,[project(k,-15,0,w,h),project(k,15,0,w,h)],'#244354');
  for(let k=-15;k<=15;k+=5)line(ctx,[project(-15,k,0,w,h),project(25,k,0,w,h)],'#244354');
  if((!measured&&grid)||(measured&&fitted.surface.length)){
-   const data=measured?fitted.surface:grid[mode].surface,n=Math.sqrt(data.length),faces=[];
-   for(let j=0;j<n-1;j++)for(let i=0;i<n-1;i++){
-     const vertices=[data[j*n+i],data[j*n+i+1],data[(j+1)*n+i+1],data[(j+1)*n+i]];
+   const data=measured?fitted.surface:grid[mode].surface,n=Math.sqrt(data.length),faces=[],polygons=[];
+   if(measured)polygons.push(...fitted.triangles);
+   else for(let j=0;j<n-1;j++)for(let i=0;i<n-1;i++)polygons.push([data[j*n+i],data[j*n+i+1],data[(j+1)*n+i+1],data[(j+1)*n+i]]);
+   for(const vertices of polygons){
      const projected=vertices.map(p=>project(p.x,p.y,height(p.b),w,h));
-     faces.push({projected,b:vertices.reduce((v,p)=>v+p.b,0)/4,depth:projected.reduce((v,p)=>v+p[2],0)/4});
+     faces.push({projected,b:vertices.reduce((v,p)=>v+p.b,0)/vertices.length,depth:projected.reduce((v,p)=>v+p[2],0)/vertices.length});
    }
    faces.sort((a,b)=>a.depth-b.depth);
    for(const f of faces){ctx.beginPath();f.projected.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fillStyle=color(f.b,max,.88);ctx.fill();ctx.strokeStyle='#84e2e521';ctx.lineWidth=.5;ctx.stroke();}
  }
  if(measured){
    const dots=(fitted.points||[]).filter(p=>Math.abs(p.z)<=.0001).map(p=>({p,s:project(p.x,p.y,height(p.b),w,h)})).sort((a,b)=>a.s[2]-b.s[2]);
-   for(const {p,s} of dots){line(ctx,[project(p.x,p.y,0,w,h),s],'#edac6340');ctx.fillStyle='#ffad74';ctx.beginPath();ctx.arc(s[0],s[1],2,0,Math.PI*2);ctx.fill();}
+   for(const {p,s} of dots){ctx.fillStyle='#fff3df';ctx.beginPath();ctx.arc(s[0],s[1],1.6,0,Math.PI*2);ctx.fill();}
    if(!dots.length){ctx.fillStyle='#8fb2c0';ctx.textAlign='center';ctx.fillText('等待导入 Z=0 平面的实际测量点',w/2,h*.38);ctx.textAlign='left';}
  }
  const origin=project(-15,-15,0,w,h);
@@ -38,21 +38,31 @@ function drawVolume(id,measured=false){
 }
 function render(){drawVolume('theory');drawVolume('measured',true);$('maxfield').textContent=`${fieldScale().toFixed(3)} mT`;}
 async function compare(){
+ try { await updateComparison(); }
+ catch(error){
+   $('empty').textContent='曲面生成失败：'+error.message+'。请重新导入报告；数据文件未被修改。';
+   fitted={surface:[],points:[],used:0,excluded:0};
+   render();
+   console.error('基础实验曲面生成失败',error);
+ }
+}
+async function updateComparison(){
  const token=++compare.version,all=$('group').value==='all';
  const selected=report?.groups.map((g,i)=>({...g,points:g.points.map(p=>({...p,spacing:p.spacing??g.spacing,reversed:g.reversed,groupIndex:i}))})).filter((g,i)=>all||i===Number($('group').value))||[];
  compared=[];fitted={surface:[],points:[],used:0,excluded:0};
+ render(); // Theory and axes must remain visible while fitting, even if import fails.
  if(!selected.length){$('empty').textContent='尚未导入本模式报告。';render();return;}
- $('empty').textContent='正在按测量数据拟合线圈磁场模型…';
+ $('empty').textContent='正在连接测量点生成曲面…';
  const local=[];
  for(const p of selected.flatMap(g=>g.points)){
-   local.push({...p,theory:Math.abs(fieldAt(p.x,p.y,p.z,mode).bx)});
+   local.push(p);
    if(local.length%32===0){await new Promise(r=>setTimeout(r,0));if(token!==compare.version)return;}
  }
  if(token!==compare.version)return;
- compared=local;fitted=fitSurface(compared,grid?.[mode].surface,mode);
+ compared=local;fitted=fitSurface(compared);
  const total=report.groups.reduce((sum,g)=>sum+g.points.length,0);
- $('empty').textContent=`报告共 ${total} 点，当前选择 ${compared.length} 点；${fitted.used} 点符合固定实验条件，${fitted.excluded} 点（角度、参数变化或条件未确认）未参与空间拟合。`+
- (fitted.surface.length?'彩色曲面由同一线圈物理模型、结合测量值拟合幅值生成；橙点为参与拟合的测点。未测区域为模型预测，不是独立实测结果。':'需至少三组合格的 X/Y 空间扫描且测点不共线；请选全部组，或导入符合固定条件且带物理坐标的报告。');
+ $('empty').textContent=`报告共 ${total} 点，当前选择 ${compared.length} 点；连接 ${fitted.used} 个同条件测点，${fitted.excluded} 点（角度或参数变化等）未混入曲面。`+
+ (fitted.triangles.length?'彩色三角面直接连接实际测量位置及 B 值，只覆盖测点围成的范围，不向外延伸、不套用理论模型。重复位置取均值，小白点为原始记录。':'需至少三组合格的 X/Y 空间扫描且测点不共线；请选择全部组。');
  render();
 }
 compare.version=0;
@@ -72,5 +82,5 @@ for(const v of ['single','double'])$(v).onclick=()=>setMode(v);
 $('group').onchange=compare;
 for(const id of ['theory','measured']){const c=$(id);let start=null;c.onpointerdown=e=>{if(e.button!==0)return;start=[e.clientX,e.clientY];c.setPointerCapture(e.pointerId);};c.onpointermove=e=>{if(!start)return;yaw+=(e.clientX-start[0])*.008;pitch=Math.max(-1.3,Math.min(1.3,pitch+(e.clientY-start[1])*.008));start=[e.clientX,e.clientY];render();};c.onpointerup=c.onpointercancel=c.onlostpointercapture=()=>start=null;c.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.6,Math.min(1.6,zoom-e.deltaY*.001));render();},{passive:false});}
 window.addEventListener('resize',render);
-fetch('./basic-theory.json').then(r=>{if(!r.ok)throw Error('理论数据加载失败');return r.json();}).then(data=>{grid=data;compare();}).catch(e=>$('status').textContent=e.message+'，请通过网站地址打开页面。');
+fetch('./basic-theory.json?v=20260919-measured-mesh4',{cache:'no-cache'}).then(r=>{if(!r.ok)throw Error('理论数据加载失败');return r.json();}).then(data=>{grid=data;compare();}).catch(e=>{$('status').textContent=e.message+'，请通过网站地址打开页面。';render();});
 setMode('single');
