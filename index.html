@@ -4584,24 +4584,24 @@ function fieldBasicView({data,selectedPoint,label='实测数据'}) {
     if(!points.length)return null;
     const ranges=['x','y','z'].map(axis=>({axis,min:Math.min(...points.map(p=>p[axis])),max:Math.max(...points.map(p=>p[axis]))}));
     const varying=ranges.filter(item=>item.max-item.min>0.001).sort((a,b)=>(b.max-b.min)-(a.max-a.min));
-    const axis=varying[0]?.axis||'x',series=[...points].sort((a,b)=>a[axis]-b[axis]);
+    const axis=points.scanAxis||varying[0]?.axis||'x',series=[...points].sort((a,b)=>a[axis]-b[axis]);
     const xMin=series[0][axis],xMax=series.at(-1)[axis],bMin=Math.min(...series.map(p=>p.b)),bMax=Math.max(...series.map(p=>p.b));
     const sx=value=>56+(value-xMin)/(xMax-xMin||1)*598,sy=value=>220-(value-bMin)/(bMax-bMin||1)*155;
     return {axis,series,xMin,xMax,bMin,bMax,path:series.map((point,i)=>`${i?'L':'M'}${sx(point[axis])},${sy(point.b)}`).join(' '),sx,sy,unmeasured:['x','y','z'].filter(a=>a!==axis&&!ranges.some(r=>r.axis===a&&r.max-r.min>0.001))};
   },[data]);
   if(!info)return (0,p.jsx)('article',{className:'panel volume-card basic-field-card',children:'请先导入基础实验数据'});
-  const axis=info.axis.toUpperCase();
+  const axis=({angle:'θ (°)',frequency:'f (Hz)',current:'I (mA)',spacing:'d (cm)'})[info.axis]||info.axis.toUpperCase();
   return (0,p.jsxs)('article',{className:'panel volume-card basic-field-card',children:[
-    (0,p.jsxs)('div',{className:'card-head',children:[(0,p.jsxs)('b',{children:[`基础实验实测 B–${axis}`,(0,p.jsx)('small',{children:'MEASURED AXIS DATA · 不推断未测空间'})]}),(0,p.jsx)('span',{children:`● ${label} · ${info.series.length} 个实测点`})]}),
+    (0,p.jsxs)('div',{className:'card-head',children:[(0,p.jsxs)('b',{children:[`实测 B–${axis}`,(0,p.jsx)('small',{children:info.axis==='angle'?'探头法线分量 · 非总场强':'MEASURED DATA · 各组独立显示'})]}),(0,p.jsx)('span',{children:`● ${label} · ${info.series.length} 个实测点`})]}),
     (0,p.jsxs)('div',{className:'basic-chart-wrap',children:[
       (0,p.jsxs)('svg',{viewBox:'0 0 700 270',role:'img','aria-label':`基础实验 B-${axis} 实测曲线`,children:[
         (0,p.jsx)('defs',{children:(0,p.jsx)('linearGradient',{id:'basicArea',x1:'0',y1:'0',x2:'0',y2:'1',children:[(0,p.jsx)('stop',{offset:'0%',stopColor:'#51e8ed',stopOpacity:'.32'}),(0,p.jsx)('stop',{offset:'100%',stopColor:'#51e8ed',stopOpacity:'0'})]})}),
         ...[0,1,2,3,4].flatMap((_,i)=>[(0,p.jsx)('path',{d:`M56 ${65+i*38.75}H654`,stroke:'#315261',strokeOpacity:'.45'},'h'+i),(0,p.jsx)('path',{d:`M${56+i*149.5} 45V220`,stroke:'#315261',strokeOpacity:'.35'},'v'+i)]),
         (0,p.jsx)('path',{d:`${info.path} L654 220 L56 220 Z`,fill:'url(#basicArea)'}),(0,p.jsx)('path',{d:info.path,fill:'none',stroke:'#54eaf0',strokeWidth:'3'}),
         ...info.series.map((point,i)=>(0,p.jsx)('circle',{cx:info.sx(point[info.axis]),cy:info.sy(point.b),r:selectedPoint&&Math.abs(point[info.axis]-selectedPoint[info.axis])<.001?6:4,fill:'#fff',stroke:'#3be9f0',strokeWidth:'2'},i)),
-        (0,p.jsx)('text',{x:56,y:247,fill:'#9bc3ca',fontSize:'12',children:fieldPositionCm(info.xMin)}),(0,p.jsx)('text',{x:625,y:247,fill:'#9bc3ca',fontSize:'12',children:`${fieldPositionCm(info.xMax)} cm`}),(0,p.jsx)('text',{x:9,y:58,fill:'#9bc3ca',fontSize:'12',children:`${info.bMax.toFixed(3)} mT`}),(0,p.jsx)('text',{x:9,y:220,fill:'#9bc3ca',fontSize:'12',children:info.bMin.toFixed(3)})
+        (0,p.jsx)('text',{x:56,y:247,fill:'#9bc3ca',fontSize:'12',children:['x','y','z'].includes(info.axis)?fieldPositionCm(info.xMin):info.xMin.toFixed(2)}),(0,p.jsx)('text',{x:580,y:247,fill:'#9bc3ca',fontSize:'12',children:['x','y','z'].includes(info.axis)?`${fieldPositionCm(info.xMax)} cm`:info.xMax.toFixed(2)}),(0,p.jsx)('text',{x:9,y:58,fill:'#9bc3ca',fontSize:'12',children:`${info.bMax.toFixed(3)} mT`}),(0,p.jsx)('text',{x:9,y:220,fill:'#9bc3ca',fontSize:'12',children:info.bMin.toFixed(3)})
       ]}),
-      (0,p.jsxs)('div',{className:'basic-chart-note',children:[(0,p.jsx)('strong',{children:`只展示实测 ${axis} 轴`}),` · ${info.unmeasured.map(a=>a.toUpperCase()).join('、')} 方向没有采集，因此不生成三维云图或截面。`]})
+      (0,p.jsxs)('div',{className:'basic-chart-note',children:[(0,p.jsx)('strong',{children:`本组实测 ${axis} 曲线`}),` · 不连接其他实验组；空间综合视图见基础实验报告/理论与实测对比页。`]})
     ]})
   ]});
 }
@@ -4636,12 +4636,23 @@ var hu=[[`◇`,`Unity虚拟实验`,`基于Unity构建虚拟实验环境，实现
   if (Array.isArray(e?.groups)) r = [];
   const measuredMap = new Map();
   if (Array.isArray(e?.groups)) e.groups.forEach((group, index) => {
-    const points = Mu(Array.isArray(group?.points) ? group.points : []);
+    const raw = Array.isArray(group?.points) ? group.points : [];
+    const points = raw.flatMap(q => Mu([q]).map(point=>({...point,
+      angle:ju(q.angleDeg,q.angle,0),frequency:ju(q.frequencyHz,q.frequency,50),
+      current:ju(q.currentmA,400),spacing:ju(q.coilSpacingCm,10),
+      measured:ju(q.measuredComponentmT,5.171*ju(q.voltagemV,q.voltage)/ju(q.frequencyHz,q.frequency,50)*(group.experimentType==='Exploration' && q.probeTurns*q.probeEffectiveAreaCm2>0 ? 800*.544542/(q.probeTurns*q.probeEffectiveAreaCm2):1))
+    })));
     if (!points.length) return;
     const state = ju(group?.coilState, group?.points?.[0]?.coilState);
     const info = fieldModeInfo(state) || { mode: `Measured${index + 1}`, label: `实测组 ${index + 1}` };
-    if (!measuredMap.has(info.mode)) measuredMap.set(info.mode, { ...info, state, points: [] });
-    measuredMap.get(info.mode).points.push(...points);
+    const changed=key=>Math.max(...points.map(p=>p[key]))-Math.min(...points.map(p=>p[key]))>.001;
+    const spatial=['x','y','z'].some(changed);
+    points.scanAxis=!spatial ? ['angle','frequency','current','spacing'].find(changed) : null;
+    if(points.scanAxis==='angle') points.forEach(p=>{if(Number.isFinite(p.measured))p.b=p.measured;});
+    const source=group.experimentType||e.experimentType||'Unknown';
+    const kind=group.groupMode==='DoubleFreq'?'频率测量':'位置/角度测量';
+    measuredMap.set(`${source}-${info.mode}-${index}`, { ...info, mode:`${source}-${info.mode}-${index}`, family:state===0?'Single':'Double', state, points,
+      label:`${source==='Basic'?'基础':source==='Exploration'?'探索':'旧版'} · ${info.label} · ${kind} · 第${group.groupIndex||index+1}组` });
   });
   const measuredFields = [...measuredMap.values()];
   if (!measuredFields.length && n.length) measuredFields.push({mode:'Measured',label:'实测数据',state:NaN,points:n});
@@ -4679,6 +4690,7 @@ function Fu({axis:e,value:t,range:n,onCommit:r}){let[i,a]=(0,d.useState)(Number(
     [basicMode, setBasicMode] = (0, d.useState)(!1),
     [basicSets, setBasicSets] = (0, d.useState)([]),
     [basicIndex, setBasicIndex] = (0, d.useState)(0),
+    [recordFamily, setRecordFamily] = (0, d.useState)('Single'),
     b = (0, d.useRef)(null),
     x = (0, d.useMemo)(() => ru(i || n || []), [i, n]),
     S = (0, d.useCallback)(
@@ -4711,6 +4723,8 @@ function Fu({axis:e,value:t,range:n,onCommit:r}){let[i,a]=(0,d.useState)(Number(
       const chosen = sets[index];
       if (!chosen) return;
       setBasicIndex(index);
+      setBasicMode(true);
+      a(null);
       r(chosen.points);
       S(chosen.points[0]);
     };
@@ -4729,7 +4743,7 @@ function Fu({axis:e,value:t,range:n,onCommit:r}){let[i,a]=(0,d.useState)(Number(
           } = Nu(e);
         const isBasic = experimentType.toLowerCase() === `basic` ||
           c.toLowerCase().includes(`basic`);
-        (setBasicMode(isBasic), setBasicSets(isBasic ? measuredFields : []), r(n.length ? n : null), s(isBasic ? [] : o));
+        (setBasicMode(isBasic), setBasicSets(measuredFields), r(n.length ? n : null), s(o));
         let l = 0;
         (isBasic
           ? (a(null), selectBasicSet(0, measuredFields))
@@ -4743,7 +4757,8 @@ function Fu({axis:e,value:t,range:n,onCommit:r}){let[i,a]=(0,d.useState)(Number(
               0,
               o.findIndex((e) => e.mode === `DoubleSame`),
             )),
-          o.length ? E(l, o) : (a(i.length ? i : null), S(n[0] || i[0])));
+          o.length && !isBasic ? E(l, o) : (a(i.length ? i : null), S(n[0] || i[0])));
+        if(measuredFields.length) {setRecordFamily(measuredFields[0].family||'Single');selectBasicSet(0,measuredFields);}
         let u = o.length ? o[l].points.length : i.length || n.length,
           d = isBasic
             ? ` · 基础实验仅显示实测坐标轴，不推断三维场`
@@ -4827,10 +4842,15 @@ function Fu({axis:e,value:t,range:n,onCommit:r}){let[i,a]=(0,d.useState)(Number(
         ],
       }),
       (0, p.jsx)(`div`, { className: `import-status`, children: u }),
-      basicMode && basicSets.length > 1 &&
+      basicSets.length > 0 &&
+        (0,p.jsxs)('div',{className:'cloud-mode-switch',children:[
+          ...[['Single','单线圈'],['Double','双线圈']].map(([family,label])=>(0,p.jsx)('button',{disabled:!basicSets.some(s=>s.family===family),className:recordFamily===family?'active':'',onClick:()=>{setRecordFamily(family);const index=basicSets.findIndex(s=>s.family===family);if(index>=0)selectBasicSet(index);},children:label},family)),
+          o.length>0&&(0,p.jsx)('button',{onClick:()=>{setBasicMode(false);E(0);},children:'探索实验空间云图'})
+        ]}),
+      basicSets.length > 0 &&
         (0,p.jsxs)(`div`,{className:`cloud-mode-switch basic-mode-switch`,children:[
           (0,p.jsx)(`span`,{children:`实测接线 / MEASURED MODE`}),
-          basicSets.map((set,index)=>(0,p.jsx)(`button`,{className:basicIndex===index?`active`:``,onClick:()=>selectBasicSet(index),children:set.label},set.mode))
+          basicSets.map((set,index)=>set.family===recordFamily&&(0,p.jsx)(`button`,{className:basicMode&&basicIndex===index?`active`:``,onClick:()=>selectBasicSet(index),children:set.label},set.mode))
         ]}),
       !basicMode && o.length > 1 &&
         (0, p.jsxs)(`div`, {

@@ -1,6 +1,6 @@
 // Read only word/document.xml. Never execute imported HTML or external relationships.
 const W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
-export async function documentXml(buffer) {
+async function zipEntry(buffer, entry='word/document.xml', binary=false) {
   if(buffer.byteLength>30*1024*1024) throw Error('报告超过 30 MB，请使用原始导出报告。');
   const v=new DataView(buffer), bytes=new Uint8Array(buffer), decode=new TextDecoder();
   let end=-1;
@@ -14,14 +14,14 @@ export async function documentXml(buffer) {
     const flags=v.getUint16(pos+8,true), method=v.getUint16(pos+10,true), packed=v.getUint32(pos+20,true), size=v.getUint32(pos+24,true);
     const n=v.getUint16(pos+28,true), extra=v.getUint16(pos+30,true), comment=v.getUint16(pos+32,true), offset=v.getUint32(pos+42,true);
     const name=decode.decode(bytes.subarray(pos+46,pos+46+n));pos+=46+n+extra+comment;
-    if(name!=='word/document.xml')continue;
+    if(name!==entry)continue;
     if(flags&1)throw Error('不支持加密的 Word 报告。');
     if(size>8*1024*1024||packed>30*1024*1024)throw Error('报告正文过大。');
     if(offset+30>buffer.byteLength||v.getUint32(offset,true)!==0x04034b50)throw Error('正文索引损坏。');
     const begin=offset+30+v.getUint16(offset+26,true)+v.getUint16(offset+28,true);
     if(begin+packed>buffer.byteLength)throw Error('报告不完整。');
     const data=bytes.slice(begin,begin+packed);
-    if(method===0){if(data.length!==size||size>8*1024*1024)throw Error('正文长度校验失败。');return decode.decode(data);}
+    if(method===0){if(data.length!==size||size>8*1024*1024)throw Error('正文长度校验失败。');return binary?data:decode.decode(data);}
     if(method!==8)throw Error('不支持此压缩格式。');
     let inflater;
     try{inflater=new DecompressionStream('deflate-raw');}catch{throw Error('此浏览器不支持读取 Word，请更新浏览器或使用近期版本 Chrome / Edge / Safari。');}
@@ -30,9 +30,29 @@ export async function documentXml(buffer) {
       if(total>8*1024*1024){await reader.cancel();throw Error('报告正文解压后过大。');}chunks.push(value);}
     if(total!==size)throw Error('正文长度校验失败。');
     const all=new Uint8Array(total);let at=0;for(const chunk of chunks){all.set(chunk,at);at+=chunk.length;}
-    return decode.decode(all);
+    return binary?all:decode.decode(all);
   }
   throw Error('找不到 Word 正文。');
+}
+export async function documentXml(buffer){return zipEntry(buffer);}
+export async function reportOverview(buffer,xml){
+  const parse=text=>{if(/<!DOCTYPE|<!ENTITY/i.test(text))throw Error('不支持的 XML 声明');const doc=new DOMParser().parseFromString(text,'application/xml');if(doc.querySelector('parsererror'))throw Error('图片索引损坏');return doc;};
+  const doc=parse(xml),body=doc.getElementsByTagNameNS(W,'body')[0];
+  let lastImage=null,chosen=null;
+  for(const child of body.children){
+    const text=[...child.getElementsByTagNameNS(W,'t')].map(n=>n.textContent).join('');
+    const blip=child.getElementsByTagNameNS('http://schemas.openxmlformats.org/drawingml/2006/main','blip')[0];
+    if(blip)lastImage=blip.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','embed');
+    if(text.includes('综合视角')&&lastImage){chosen=lastImage;break;}
+  }
+  if(!chosen)return null;
+  const rels=parse(await zipEntry(buffer,'word/_rels/document.xml.rels'));
+  const rel=[...rels.getElementsByTagNameNS('*','Relationship')].find(n=>n.getAttribute('Id')===chosen);
+  if(!rel||rel.getAttribute('TargetMode')==='External')throw Error('不读取报告外部图片');
+  const target=rel.getAttribute('Target').replace(/^\/?word\//,'');
+  if(!/^media\/[\w .-]+\.(png|jpe?g)$/i.test(target))throw Error('报告综合视角不是支持的内嵌图片');
+  const bytes=await zipEntry(buffer,'word/'+target,true);
+  return new Blob([bytes],{type:/\.png$/i.test(target)?'image/png':'image/jpeg'});
 }
 export function parseReport(xml) {
   if(/<!DOCTYPE|<!ENTITY/i.test(xml))throw Error('报告包含不支持的 XML 声明。');
