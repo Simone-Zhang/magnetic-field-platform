@@ -4280,7 +4280,7 @@ function fieldContextGlow(scene, source, bounds, resources) {
 }
 function fieldVolumeShells(scene, sampler, bounds, resources, contextOnly=false) {
   // Nested isosurfaces of the imported scalar field. No synthetic lobes or peaks.
-  const count = 25, vertices = [], values = [];
+  const count = 33, vertices = [], values = [];
   for (let x=0;x<count;x++) for(let y=0;y<count;y++) for(let z=0;z<count;z++) {
     const point={x:bounds.x[0]+(bounds.x[1]-bounds.x[0])*x/(count-1),
       y:bounds.y[0]+(bounds.y[1]-bounds.y[0])*y/(count-1),
@@ -4289,7 +4289,7 @@ function fieldVolumeShells(scene, sampler, bounds, resources, contextOnly=false)
   }
   const index=(x,y,z)=>(x*count+y)*count+z;
   const tetrahedra=[[0,5,1,6],[0,1,2,6],[0,2,3,6],[0,3,7,6],[0,7,4,6],[0,4,5,6]];
-  const levels=contextOnly?[0.06,0.13,0.23,0.36]:[0.08,0.18,0.30,0.43,0.56,0.69,0.81,0.91,0.975];
+  const levels=contextOnly?[0.06,0.13,0.23,0.36]:Array.from({length:24},(_,i)=>0.06+i*0.92/23);
   if(sampler.maxB-sampler.minB<1e-12) return;
   levels.forEach((fraction, layer)=>{
     const threshold=sampler.minB+fraction*(sampler.maxB-sampler.minB), triangles=[];
@@ -4315,7 +4315,7 @@ function fieldVolumeShells(scene, sampler, bounds, resources, contextOnly=false)
     const shape=new Hr();shape.setAttribute('position',new Ar(triangles,3));
     const color=contextOnly?[35,135,220]:ou(threshold,sampler.minB,sampler.maxB);
     const material=new ei({color:(color[0]<<16)|(color[1]<<8)|color[2],transparent:true,
-      opacity:contextOnly?0.045:layer<3?0.10:layer<6?0.18:layer===6?0.48:0.92,side:2,depthWrite:false});
+      opacity:contextOnly?0.045:0.025+0.12*Math.pow(fraction,2),side:2,depthWrite:false});
     const mesh=new fi(shape,material);mesh.renderOrder=contextOnly?-2:2+layer*0.2;
     scene.add(mesh);resources.push(shape,material);
   });
@@ -4344,7 +4344,7 @@ function fieldScenePosition(point, bounds) {
     (point.y - bounds.center.y) * scale);
 }
 function fieldImportGeometry(root, field) {
-  // Legacy Unity 1.1 exports recenter each cloud but leave measured coordinates alone.
+  // Unity 1.1 and 1.2 both center cloud coordinates on the active coil system.
   // Do not guess spacing from the intensity peaks or from mixed-condition records.
   const groups = Array.isArray(root.groups) ? root.groups : [];
   const values = (key) => groups.flatMap(group => [
@@ -4355,7 +4355,7 @@ function fieldImportGeometry(root, field) {
   const rawSpacing = stable(values('coilSpacingCm'));
   const spacing = rawSpacing > 0 ? fieldDisplaySpacing(rawSpacing) : rawSpacing;
   const diameter = stable(values('sourceDiameterCm'));
-  if (root.schemaVersion !== '1.1' || !(spacing > 0)) return null;
+  if (!['1.1', '1.2'].includes(String(root.schemaVersion)) || !(spacing > 0)) return null;
   const left = Math.abs(field.stateLeft) > 0.5, right = Math.abs(field.stateRight) > 0.5;
   const shift = left && !right ? 0 : right && !left ? spacing : spacing / 2;
   return { spacing, rawSpacing, diameter: diameter > 0 ? diameter : null, shift, left, right };
@@ -4387,7 +4387,7 @@ function pu(scene, bounds, resources, geometry) {
   return group;
 }
 function mu({ compact = false, onPoint, data, selectedPoint, showSlices = true, showCloud = true }) {
-  const [fieldView, setFieldView] = (0,d.useState)('center');
+  const [fieldView, setFieldView] = (0,d.useState)('full');
   const geometryInfo=data?.fieldGeometry;
   const centerAvailable=!!geometryInfo?.diameter && data?.length>0;
   const isCenter=!compact && centerAvailable && fieldView==='center';

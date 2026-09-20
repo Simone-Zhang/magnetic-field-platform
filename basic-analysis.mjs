@@ -1,5 +1,5 @@
-import {documentXml,parseReport,reportOverview} from './basic-docx.mjs?v=20260919-measured-mesh4';
-import {fitSurface} from './basic-fit.mjs?v=20260919-measured-mesh4';
+import {documentXml,parseReport,reportOverview} from './basic-docx.mjs?v=20260920-angle-consistent5';
+import {fitSurface} from './basic-fit.mjs?v=20260920-angle-consistent5';
 const $=id=>document.getElementById(id);
 let mode='single', report=null, grid=null, compared=[], yaw=-.65,pitch=.46,zoom=1;
 const reportCache={};
@@ -28,7 +28,7 @@ function drawVolume(id,measured=false){
  if(measured){
    const dots=(fitted.points||[]).filter(p=>Math.abs(p.z)<=.0001).map(p=>({p,s:project(p.x,p.y,height(p.b),w,h)})).sort((a,b)=>a.s[2]-b.s[2]);
    for(const {p,s} of dots){ctx.fillStyle='#fff3df';ctx.beginPath();ctx.arc(s[0],s[1],1.6,0,Math.PI*2);ctx.fill();}
-   if(!dots.length){ctx.fillStyle='#8fb2c0';ctx.textAlign='center';ctx.fillText('等待导入 Z=0 平面的实际测量点',w/2,h*.38);ctx.textAlign='left';}
+   if(!dots.length){ctx.fillStyle='#8fb2c0';ctx.textAlign='center';ctx.fillText(report?'报告已导入；当前没有通过筛选的测点，请查看下方原因':'等待导入 Z=0 平面的实际测量点',w/2,h*.38);ctx.textAlign='left';}
  }
  const origin=project(-15,-15,0,w,h);
  for(const [v,label] of [[[25,-15,0],'X / cm'],[[-15,15,0],'Y / cm'],[[-15,-15,29],'B / mT']]){line(ctx,[origin,project(...v,w,h)],'#91b7c6');const p=project(...v,w,h);ctx.fillStyle='#d3eef7';ctx.fillText(label,Math.min(w-48,Math.max(4,p[0]+4)),Math.max(15,p[1]));}
@@ -61,7 +61,7 @@ async function updateComparison(){
  if(token!==compare.version)return;
  compared=local;fitted=fitSurface(compared);
  const total=report.groups.reduce((sum,g)=>sum+g.points.length,0);
- $('empty').textContent=`报告共 ${total} 点，当前选择 ${compared.length} 点；连接 ${fitted.used} 个同条件测点，${fitted.excluded} 点（角度或参数变化等）未混入曲面。`+
+ $('empty').textContent=`报告共 ${total} 点，当前选择 ${compared.length} 点；连接 ${fitted.used} 个同条件测点。排除：非零 Z ${fitted.rejected.z} 点，角度或参数改变 ${fitted.rejected.parameters} 点，无效数据 ${fitted.rejected.invalid} 点。固定角度无需为 0°。`+
  (fitted.triangles.length?'彩色三角面直接连接实际测量位置及 B 值，只覆盖测点围成的范围，不向外延伸、不套用理论模型。重复位置取均值，小白点为原始记录。':'需至少三组合格的 X/Y 空间扫描且测点不共线；请选择全部组。');
  render();
 }
@@ -82,5 +82,5 @@ for(const v of ['single','double'])$(v).onclick=()=>setMode(v);
 $('group').onchange=compare;
 for(const id of ['theory','measured']){const c=$(id);let start=null;c.onpointerdown=e=>{if(e.button!==0)return;start=[e.clientX,e.clientY];c.setPointerCapture(e.pointerId);};c.onpointermove=e=>{if(!start)return;yaw+=(e.clientX-start[0])*.008;pitch=Math.max(-1.3,Math.min(1.3,pitch+(e.clientY-start[1])*.008));start=[e.clientX,e.clientY];render();};c.onpointerup=c.onpointercancel=c.onlostpointercapture=()=>start=null;c.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.6,Math.min(1.6,zoom-e.deltaY*.001));render();},{passive:false});}
 window.addEventListener('resize',render);
-fetch('./basic-theory.json?v=20260919-measured-mesh4',{cache:'no-cache'}).then(r=>{if(!r.ok)throw Error('理论数据加载失败');return r.json();}).then(data=>{grid=data;compare();}).catch(e=>{$('status').textContent=e.message+'，请通过网站地址打开页面。';render();});
+fetch('./basic-theory.json?v=20260920-angle-consistent5',{cache:'no-cache'}).then(r=>{if(!r.ok)throw Error('理论数据加载失败');return r.json();}).then(data=>{grid=data;compare();}).catch(e=>{$('status').textContent=e.message+'，请通过网站地址打开页面。';render();});
 setMode('single');

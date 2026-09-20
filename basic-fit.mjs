@@ -1,16 +1,20 @@
 // Triangulate measured XY positions only. No theory values or extrapolated vertices.
 export function fitSurface(points){
- const cohorts=new Map();
+ const source=[];let baseline=null;
+ const rejected={invalid:0,z:0,parameters:0};
+ const same=(a,b)=>a===b||(Number.isFinite(a)&&Number.isFinite(b)&&Math.abs(a-b)<=.0001);
+ const keys=['angle','current','f','spacing','turns','diameter','reversed','verified'];
  for(const p of points){
-  if(![p.x,p.y,p.z,p.b].every(Number.isFinite)||p.b<0||Math.abs(p.z)>.0001||Math.abs(p.angle)>.05)continue;
-  const key=JSON.stringify([p.current,p.f,p.spacing,p.turns,p.diameter,p.reversed,p.verified]);
-  if(!cohorts.has(key))cohorts.set(key,[]);cohorts.get(key).push(p);
+  if(![p.x,p.y,p.z,p.b,p.angle,p.f,p.current].every(Number.isFinite)||p.b<0||p.f<=0){rejected.invalid++;continue;}
+  if(Math.abs(p.z)>.0001){rejected.z++;continue;}
+  if(!baseline)baseline=p;
+  if(!keys.every(key=>same(p[key],baseline[key]))){rejected.parameters++;continue;}
+  source.push(p);
  }
- const source=[...cohorts.values()].sort((a,b)=>b.length-a.length)[0]||[];
- const empty={surface:[],triangles:[],points:source,used:source.length,excluded:points.length-source.length};
+ const empty={surface:[],triangles:[],points:source,used:source.length,excluded:points.length-source.length,rejected};
  const scans=new Map();
  for(const p of source){if(!scans.has(p.groupIndex))scans.set(p.groupIndex,[]);scans.get(p.groupIndex).push(p);}
- const spatial=[...scans.values()].filter(g=>g.some(p=>Math.hypot(p.x-g[0].x,p.y-g[0].y)>.001));
+ const spatial=[...scans.values()].filter(g=>g.some(p=>Math.abs(p.x-g[0].x)>.01||Math.abs(p.y-g[0].y)>.01));
  if(spatial.length<3)return empty;
  const unique=new Map();
  for(const p of source){const key=p.x.toFixed(6)+','+p.y.toFixed(6);if(!unique.has(key))unique.set(key,{...p,sum:0,count:0});const q=unique.get(key);q.sum+=p.b;q.count++;}
