@@ -4844,8 +4844,8 @@ function Fu({axis:e,value:t,range:n,onCommit:r}){let[i,a]=(0,d.useState)(Number(
       (0, p.jsx)(`div`, { className: `import-status`, children: u }),
       basicSets.length > 0 &&
         (0,p.jsxs)('div',{className:'cloud-mode-switch',children:[
-          ...[['Single','单线圈'],['Double','双线圈']].map(([family,label])=>(0,p.jsx)('button',{disabled:!basicSets.some(s=>s.family===family),className:recordFamily===family?'active':'',onClick:()=>{setRecordFamily(family);const index=basicSets.findIndex(s=>s.family===family);if(index>=0)selectBasicSet(index);},children:label},family)),
-          o.length>0&&(0,p.jsx)('button',{onClick:()=>{setBasicMode(false);E(0);},children:'探索实验空间云图'})
+          ...[['Single','单线圈'],['Double','双线圈']].map(([family,label])=>(0,p.jsx)('button',{disabled:!basicSets.some(s=>s.family===family),className:basicMode&&recordFamily===family?'active':'',onClick:()=>{setRecordFamily(family);const index=basicSets.findIndex(s=>s.family===family);if(index>=0)selectBasicSet(index);},children:label},family)),
+          o.length>0&&(0,p.jsx)('button',{className:!basicMode?'active':'',onClick:()=>{setBasicMode(false);E(0);},children:'探索实验空间云图'})
         ]}),
       basicSets.length > 0 &&
         (0,p.jsxs)(`div`,{className:`cloud-mode-switch basic-mode-switch`,children:[
